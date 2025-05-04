@@ -20,6 +20,9 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * ViewModel for PDF annotation operations
+ */
 public class MainViewModel extends AndroidViewModel {
     private static final String TAG = "MainViewModel";
     private final PdfGenerator pdfGenerator;
@@ -28,6 +31,7 @@ public class MainViewModel extends AndroidViewModel {
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
     private String annotationText = "made in India";
     private File lastGeneratedPdf;
+    private boolean useToggleableAnnotations = true;
 
     public MainViewModel(Application application) {
         super(application);
@@ -35,22 +39,51 @@ public class MainViewModel extends AndroidViewModel {
         executorService = Executors.newSingleThreadExecutor();
     }
 
+    /**
+     * Sets the text to use for annotations
+     */
     public void setAnnotationText(String text) {
         this.annotationText = text != null ? text : "made in India";
     }
 
+    /**
+     * Controls whether to use toggleable annotations
+     */
+    public void setUseToggleableAnnotations(boolean useToggleableAnnotations) {
+        this.useToggleableAnnotations = useToggleableAnnotations;
+    }
+
+    /**
+     * Returns whether toggleable annotations are enabled
+     */
+    public boolean isUsingToggleableAnnotations() {
+        return useToggleableAnnotations;
+    }
+
+    /**
+     * Returns the path to the last generated PDF
+     */
     public String getLastGeneratedPdfPath() {
         return lastGeneratedPdf != null ? lastGeneratedPdf.getAbsolutePath() : "";
     }
 
+    /**
+     * LiveData indicating if a PDF has been generated
+     */
     public LiveData<Boolean> getIsPdfGenerated() {
         return isPdfGenerated;
     }
 
+    /**
+     * LiveData for error messages
+     */
     public LiveData<String> getErrorMessage() {
         return errorMessage;
     }
 
+    /**
+     * Processes selected images and generates a PDF with annotations
+     */
     public void processImagesAndGeneratePdf(List<Uri> imageUris) {
         if (imageUris == null || imageUris.isEmpty()) {
             errorMessage.postValue("No images provided");
@@ -82,6 +115,9 @@ public class MainViewModel extends AndroidViewModel {
         });
     }
 
+    /**
+     * Processes an image URI and saves it to a temporary file
+     */
     private String processImage(Uri imageUri) {
         InputStream in = null;
         OutputStream out = null;
@@ -118,6 +154,9 @@ public class MainViewModel extends AndroidViewModel {
         }
     }
 
+    /**
+     * Generates a PDF with the processed images and annotations
+     */
     private void generatePdf(List<String> imagePaths) throws IOException {
         File pdfDir = new File(getApplication().getExternalFilesDir(null), "pdfs");
         if (!pdfDir.exists() && !pdfDir.mkdirs()) {
@@ -125,7 +164,14 @@ public class MainViewModel extends AndroidViewModel {
         }
 
         lastGeneratedPdf = new File(pdfDir, "annotated_images_" + System.currentTimeMillis() + ".pdf");
-        pdfGenerator.createPdfWithAnnotations(imagePaths, lastGeneratedPdf, annotationText);
+
+        // appropriate method based on the toggle setting
+        if (useToggleableAnnotations) {
+            pdfGenerator.createPdfWithToggleableAnnotations(imagePaths, lastGeneratedPdf, annotationText);
+        } else {
+            pdfGenerator.createPdfWithAnnotations(imagePaths, lastGeneratedPdf, annotationText);
+        }
+
         isPdfGenerated.postValue(true);
     }
 
@@ -134,4 +180,4 @@ public class MainViewModel extends AndroidViewModel {
         super.onCleared();
         executorService.shutdown();
     }
-} 
+}

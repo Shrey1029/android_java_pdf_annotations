@@ -13,6 +13,27 @@
         android:text="made in India"
         android:layout_marginBottom="16dp"/>
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Use toggleable annotations (MS Office style)"
+            android:textSize="14sp"/>
+
+        <Switch
+            android:id="@+id/switch_toggleable_annotations"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"/>
+    </LinearLayout>
+
     <Button
         android:id="@+id/btn_generate_pdf"
         android:layout_width="match_parent"
