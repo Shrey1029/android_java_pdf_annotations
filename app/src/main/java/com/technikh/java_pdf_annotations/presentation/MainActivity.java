@@ -1,9 +1,13 @@
 package com.technikh.java_pdf_annotations.presentation;
 
 import android.annotation.SuppressLint;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -146,22 +150,61 @@ public class MainActivity extends AppCompatActivity {
              PDDocument document = PDDocument.load(inputStream)) {
 
             LinearLayout layout = findViewById(R.id.layout_annotations);
-            layout.removeAllViews(); // clear any previous annotations
+            layout.removeAllViews(); // clear old views
 
             int pageIndex = 1;
             for (PDPage page : document.getPages()) {
                 List<PDAnnotation> annotations = page.getAnnotations();
                 for (PDAnnotation annotation : annotations) {
                     String subType = annotation.getSubtype();
-
-                    // Handle only Text or FreeText annotations
                     if ("Text".equalsIgnoreCase(subType) || "FreeText".equalsIgnoreCase(subType)) {
                         String content = annotation.getContents();
+                        String title = annotation.getCOSObject().getString("T"); // 'T' = Title field in COS
+                        String modifiedDate = annotation.getModifiedDate();
+
                         if (content != null && !content.trim().isEmpty()) {
+                            // Main annotation layout
+                            LinearLayout cardLayout = new LinearLayout(this);
+                            cardLayout.setOrientation(LinearLayout.VERTICAL);
+                            cardLayout.setPadding(24, 16, 24, 16);
+                            cardLayout.setBackgroundColor(0xFFF1F1F1);
+
+                            // Annotation content
                             TextView tv = new TextView(this);
-                            tv.setText("Page " + pageIndex + " - " + subType + ": " + content);
-                            tv.setPadding(16, 8, 16, 8);
-                            layout.addView(tv);
+                            StringBuilder display = new StringBuilder();
+                            display.append("Page ").append(pageIndex).append("\n");
+                            if (title != null) display.append("📝 ").append(title).append("\n");
+                            display.append(content).append("\n");
+                            if (modifiedDate != null)
+                                display.append("📅 ").append(modifiedDate.replace("D:", "")).append("\n");
+                            tv.setText(display.toString());
+                            tv.setTextSize(15f);
+                            tv.setPadding(0, 0, 0, 8);
+
+                            // Share button
+                            Button btnShare = new Button(this);
+                            btnShare.setText("Share Annotation");
+                            btnShare.setTextSize(14f);
+
+                            String shareText = content; // or use display.toString() to include all info
+                            btnShare.setOnClickListener(view -> {
+                                // Copy to clipboard
+                                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                                ClipData clip = ClipData.newPlainText("annotation", shareText);
+                                clipboard.setPrimaryClip(clip);
+                                Toast.makeText(this, "Copied to clipboard!", Toast.LENGTH_SHORT).show();
+
+                                // Share via Android system sheet
+                                Intent intent = new Intent(Intent.ACTION_SEND);
+                                intent.setType("text/plain");
+                                intent.putExtra(Intent.EXTRA_TEXT, shareText);
+                                startActivity(Intent.createChooser(intent, "Share annotation via"));
+                            });
+
+                            // Add views to layout
+                            cardLayout.addView(tv);
+                            cardLayout.addView(btnShare);
+                            layout.addView(cardLayout);
                         }
                     }
                 }
@@ -169,11 +212,12 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (layout.getChildCount() == 0) {
-                Toast.makeText(this, "No annotations found in selected PDF.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "No visible annotations found.", Toast.LENGTH_SHORT).show();
             }
 
         } catch (Exception e) {
-            Toast.makeText(this, "Error extracting annotations: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
+
 }
