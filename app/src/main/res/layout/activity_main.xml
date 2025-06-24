@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -34,19 +35,34 @@
             android:checked="true"/>
     </LinearLayout>
 
-    <Button
+    <!-- Updated to MaterialButton -->
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_generate_pdf"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Generate PDF with Images" />
+        android:text="Generate PDF with Images"
+        style="@style/Widget.MaterialComponents.Button"
+        android:layout_marginBottom="12dp" />
 
-    <TextView
-        android:id="@+id/tv_generated_pdf"
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_select_pdf"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:textSize="16sp"
-        android:gravity="center"
-        android:visibility="gone"/>
+        android:text="Select PDF"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp">
+
+        <LinearLayout
+            android:id="@+id/layout_annotations"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp"/>
+    </ScrollView>
+
 
 </LinearLayout>

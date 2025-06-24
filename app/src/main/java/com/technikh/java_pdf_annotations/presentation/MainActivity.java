@@ -5,7 +5,10 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.Switch;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -16,13 +19,20 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.technikh.java_pdf_annotations.R;
 
+import com.tom_roush.pdfbox.pdmodel.PDDocument;
+import com.tom_roush.pdfbox.pdmodel.PDPage;
+import com.tom_roush.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
+
 import java.io.File;
+import java.io.InputStream;
+import java.util.List;
 
 /**
  * Main activity for PDF annotation application
  */
 public class MainActivity extends AppCompatActivity {
     private MainViewModel viewModel;
+
     private final ActivityResultLauncher<String> getContent = registerForActivityResult(
             new ActivityResultContracts.GetMultipleContents(),
             uris -> {
@@ -35,6 +45,16 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
     );
+
+    private final ActivityResultLauncher<String> getPdfFile = registerForActivityResult(
+            new ActivityResultContracts.GetContent(),
+            uri -> {
+                if (uri != null) {
+                    extractAnnotationsFromPdf(uri);
+                }
+            }
+    );
+
     private EditText etAnnotationText;
     @SuppressLint("UseSwitchCompatOrMaterialCode")
     private Switch switchToggleableAnnotations;
@@ -75,6 +95,11 @@ public class MainActivity extends AppCompatActivity {
             viewModel.setAnnotationText(annotationText);
             getContent.launch("image/*");
         });
+
+        // Select PDF file button
+        findViewById(R.id.btn_select_pdf).setOnClickListener(v -> {
+            getPdfFile.launch("application/pdf");
+        });
     }
 
     /**
@@ -110,6 +135,45 @@ public class MainActivity extends AppCompatActivity {
             startActivity(Intent.createChooser(intent, "Open PDF with..."));
         } catch (Exception e) {
             Toast.makeText(this, "Error opening PDF: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Extracts annotations from selected PDF file and displays them
+     */
+    private void extractAnnotationsFromPdf(Uri uri) {
+        try (InputStream inputStream = getContentResolver().openInputStream(uri);
+             PDDocument document = PDDocument.load(inputStream)) {
+
+            LinearLayout layout = findViewById(R.id.layout_annotations);
+            layout.removeAllViews(); // clear any previous annotations
+
+            int pageIndex = 1;
+            for (PDPage page : document.getPages()) {
+                List<PDAnnotation> annotations = page.getAnnotations();
+                for (PDAnnotation annotation : annotations) {
+                    String subType = annotation.getSubtype();
+
+                    // Handle only Text or FreeText annotations
+                    if ("Text".equalsIgnoreCase(subType) || "FreeText".equalsIgnoreCase(subType)) {
+                        String content = annotation.getContents();
+                        if (content != null && !content.trim().isEmpty()) {
+                            TextView tv = new TextView(this);
+                            tv.setText("Page " + pageIndex + " - " + subType + ": " + content);
+                            tv.setPadding(16, 8, 16, 8);
+                            layout.addView(tv);
+                        }
+                    }
+                }
+                pageIndex++;
+            }
+
+            if (layout.getChildCount() == 0) {
+                Toast.makeText(this, "No annotations found in selected PDF.", Toast.LENGTH_SHORT).show();
+            }
+
+        } catch (Exception e) {
+            Toast.makeText(this, "Error extracting annotations: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 }
