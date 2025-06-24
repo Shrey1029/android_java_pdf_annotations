@@ -23,6 +23,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.technikh.java_pdf_annotations.R;
 
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDPage;
 import com.tom_roush.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
@@ -68,13 +69,25 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        PDFBoxResourceLoader.init(getApplicationContext());
+
         viewModel = new ViewModelProvider(this).get(MainViewModel.class);
         etAnnotationText = findViewById(R.id.et_annotation_text);
         switchToggleableAnnotations = findViewById(R.id.switch_toggleable_annotations);
 
         setupObservers();
         setupClickListeners();
+
+        // 🆕 Handle incoming PDF if launched from file manager
+        Intent intent = getIntent();
+        if (Intent.ACTION_VIEW.equals(intent.getAction())) {
+            Uri data = intent.getData();
+            if (data != null && data.toString().endsWith(".pdf")) {
+                extractAnnotationsFromPdf(data); // You already have this method
+            }
+        }
     }
+
 
     /**
      * Sets up click listeners for UI elements
