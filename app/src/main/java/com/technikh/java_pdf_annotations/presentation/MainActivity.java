@@ -22,7 +22,6 @@ import androidx.core.content.FileProvider;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.technikh.java_pdf_annotations.R;
-
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDPage;
@@ -32,9 +31,6 @@ import java.io.File;
 import java.io.InputStream;
 import java.util.List;
 
-/**
- * Main activity for PDF annotation application
- */
 public class MainActivity extends AppCompatActivity {
     private MainViewModel viewModel;
 
@@ -78,31 +74,38 @@ public class MainActivity extends AppCompatActivity {
         setupObservers();
         setupClickListeners();
 
-        // 🆕 Handle incoming PDF if launched from file manager
-        Intent intent = getIntent();
-        if (Intent.ACTION_VIEW.equals(intent.getAction())) {
-            Uri data = intent.getData();
-            if (data != null && data.toString().endsWith(".pdf")) {
-                extractAnnotationsFromPdf(data); // You already have this method
-            }
+        handleIncomingPdfIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleIncomingPdfIntent(intent);
+    }
+
+    private void handleIncomingPdfIntent(Intent intent) {
+        String action = intent.getAction();
+        Uri data = null;
+
+        if (Intent.ACTION_VIEW.equals(action)) {
+            data = intent.getData();
+        } else if (Intent.ACTION_SEND.equals(action)) {
+            data = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+        }
+
+        if (data != null && "application/pdf".equals(intent.getType())) {
+            extractAnnotationsFromPdf(data);
         }
     }
 
-
-    /**
-     * Sets up click listeners for UI elements
-     */
     private void setupClickListeners() {
-        // Toggle switch listener
         switchToggleableAnnotations.setOnCheckedChangeListener((buttonView, isChecked) -> {
             viewModel.setUseToggleableAnnotations(isChecked);
-            String message = isChecked ?
-                    "Using toggleable annotations" :
-                    "Using standard annotations";
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,
+                    isChecked ? "Using toggleable annotations" : "Using standard annotations",
+                    Toast.LENGTH_SHORT).show();
         });
 
-        // Generate PDF button
         findViewById(R.id.btn_generate_pdf).setOnClickListener(v -> {
             String annotationText = etAnnotationText.getText().toString().trim();
             if (annotationText.isEmpty()) {
@@ -113,15 +116,11 @@ public class MainActivity extends AppCompatActivity {
             getContent.launch("image/*");
         });
 
-        // Select PDF file button
         findViewById(R.id.btn_select_pdf).setOnClickListener(v -> {
             getPdfFile.launch("application/pdf");
         });
     }
 
-    /**
-     * Sets up LiveData observers
-     */
     private void setupObservers() {
         viewModel.getIsPdfGenerated().observe(this, isGenerated -> {
             if (isGenerated) {
@@ -136,9 +135,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Opens the generated PDF file in a PDF viewer
-     */
     private void openPdfFile(File pdfFile) {
         try {
             Uri pdfUri = FileProvider.getUriForFile(this,
@@ -155,15 +151,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Extracts annotations from selected PDF file and displays them
-     */
     private void extractAnnotationsFromPdf(Uri uri) {
         try (InputStream inputStream = getContentResolver().openInputStream(uri);
              PDDocument document = PDDocument.load(inputStream)) {
 
             LinearLayout layout = findViewById(R.id.layout_annotations);
-            layout.removeAllViews(); // clear old views
+            layout.removeAllViews();
 
             int pageIndex = 1;
             for (PDPage page : document.getPages()) {
@@ -172,17 +165,15 @@ public class MainActivity extends AppCompatActivity {
                     String subType = annotation.getSubtype();
                     if ("Text".equalsIgnoreCase(subType) || "FreeText".equalsIgnoreCase(subType)) {
                         String content = annotation.getContents();
-                        String title = annotation.getCOSObject().getString("T"); // 'T' = Title field in COS
+                        String title = annotation.getCOSObject().getString("T");
                         String modifiedDate = annotation.getModifiedDate();
 
                         if (content != null && !content.trim().isEmpty()) {
-                            // Main annotation layout
                             LinearLayout cardLayout = new LinearLayout(this);
                             cardLayout.setOrientation(LinearLayout.VERTICAL);
                             cardLayout.setPadding(24, 16, 24, 16);
                             cardLayout.setBackgroundColor(0xFFF1F1F1);
 
-                            // Annotation content
                             TextView tv = new TextView(this);
                             StringBuilder display = new StringBuilder();
                             display.append("Page ").append(pageIndex).append("\n");
@@ -194,29 +185,39 @@ public class MainActivity extends AppCompatActivity {
                             tv.setTextSize(15f);
                             tv.setPadding(0, 0, 0, 8);
 
-                            // Share button
-                            Button btnShare = new Button(this);
-                            btnShare.setText("Share Annotation");
-                            btnShare.setTextSize(14f);
+                            // Buttons layout
+                            LinearLayout buttonLayout = new LinearLayout(this);
+                            buttonLayout.setOrientation(LinearLayout.HORIZONTAL);
 
-                            String shareText = content; // or use display.toString() to include all info
-                            btnShare.setOnClickListener(view -> {
-                                // Copy to clipboard
+                            // Copy button
+                            Button btnCopy = new Button(this);
+                            btnCopy.setText("Copy");
+                            btnCopy.setTextSize(14f);
+                            btnCopy.setOnClickListener(view -> {
                                 ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                                ClipData clip = ClipData.newPlainText("annotation", shareText);
+                                ClipData clip = ClipData.newPlainText("annotation", content);
                                 clipboard.setPrimaryClip(clip);
                                 Toast.makeText(this, "Copied to clipboard!", Toast.LENGTH_SHORT).show();
-
-                                // Share via Android system sheet
-                                Intent intent = new Intent(Intent.ACTION_SEND);
-                                intent.setType("text/plain");
-                                intent.putExtra(Intent.EXTRA_TEXT, shareText);
-                                startActivity(Intent.createChooser(intent, "Share annotation via"));
                             });
 
-                            // Add views to layout
+                            // Share button
+                            Button btnShare = new Button(this);
+                            btnShare.setText("Share");
+                            btnShare.setTextSize(14f);
+                            btnShare.setOnClickListener(view -> {
+                                Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                                shareIntent.setType("text/plain");
+                                shareIntent.putExtra(Intent.EXTRA_TEXT, content);
+                                startActivity(Intent.createChooser(shareIntent, "Share annotation via"));
+                            });
+
+                            // Add buttons to button layout
+                            buttonLayout.addView(btnCopy);
+                            buttonLayout.addView(btnShare);
+
+                            // Add views to card
                             cardLayout.addView(tv);
-                            cardLayout.addView(btnShare);
+                            cardLayout.addView(buttonLayout);
                             layout.addView(cardLayout);
                         }
                     }
@@ -232,5 +233,4 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
-
 }
